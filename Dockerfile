@@ -2,7 +2,7 @@ FROM       alpine
 MAINTAINER Johannes 'fish' Ziemke <fish@docker.com> (@discordianfish)
 
 ENV  GOPATH /go
-ENV APPPATH $GOPATH/src/github.com/docker-infra/docker-backup
+ENV APPPATH $GOPATH/src/github.com/glim/docker-backup
 COPY . $APPPATH
 RUN apk add --update -t build-deps go git && cd $APPPATH \
     && go get -d && go build -o /bin/docker-backup \

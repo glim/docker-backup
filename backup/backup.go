@@ -25,6 +25,14 @@ type container struct {
 	HostConfig runconfig.HostConfig
 	Name       string            `json:"Name"`
 	Volumes    map[string]string `json:"Volumes"`
+	Mounts []struct {
+	    Rw bool `json:"RW"`
+	    Mode string `json:"Mode"`
+	    Driver string `json:"Driver"`
+	    Destination string `json:"Destination"`
+	    Source string `json:"Source"`
+	    Name string `json:"Name"`
+	} `json:"Mounts"`
 }
 
 type containerResponse struct {
@@ -86,6 +94,15 @@ func (b *ContainerBackup) Store(containerId string) (uint, error) {
 	n := uint(0)
 	for path, hostPath := range volumeContainer.Volumes {
 		volume := newContainerVolume(path, hostPath, tw)
+		nl, err := volume.Store()
+		if err != nil {
+			return n, err
+		}
+		n = n + nl
+	}
+	//for docker 1.8
+	for _, mount := range volumeContainer.Mounts {
+		volume := newContainerVolume(mount.Destination,mount.Source,tw)
 		nl, err := volume.Store()
 		if err != nil {
 			return n, err
@@ -170,6 +187,20 @@ func (b *ContainerBackup) Restore() error {
 
 		relOldHostPath := oldHostPath[len(filepath.Dir(oldHostPath))+1:]
 		trans[relOldHostPath] = newHostPath
+	}
+
+	for _,oldMount := range oldContainer.Mounts {
+		//havent found the new host path yet, probably a mount in docker 1.8
+		newHostPath := ""
+		for _, mount := range newContainer.Mounts {
+			if oldMount.Destination == mount.Destination {
+				newHostPath = mount.Source
+				break
+			}	
+		}
+		oldHostPath := oldMount.Source
+		relOldHostPath := oldHostPath[len(filepath.Dir(oldHostPath))+1:]
+		trans[relOldHostPath] = newHostPath		
 	}
 
 	if _, err := b.rw.Seek(0, 0); err != nil {
